@@ -31,16 +31,18 @@
 namespace ray {
 namespace gcs {
 
-/// `GcsActorWorkerAssignment` represents the assignment from one or multiple actors to a
-/// worker process.
-/// TODO(Chong-Li): It contains multiple slots, and each of them can bind to an actor.
+/// `GcsActorWorkerAssignment` represents the assignment from one or multiple
+/// actors to a worker process.
+/// TODO(Chong-Li): It contains multiple slots, and each of them can bind to an
+/// actor.
 class GcsActorWorkerAssignment
     : public std::enable_shared_from_this<GcsActorWorkerAssignment> {
  public:
   /// Construct a GcsActorWorkerAssignment.
   ///
-  /// \param node_id ID of node on which this gcs actor worker assignment is allocated.
-  /// \param acquired_resources Resources owned by this gcs actor worker assignment.
+  /// \param node_id ID of node on which this gcs actor worker assignment is
+  /// allocated. \param acquired_resources Resources owned by this gcs actor
+  /// worker assignment.
   GcsActorWorkerAssignment(const NodeID &node_id,
                            const ResourceRequest &acquired_resources);
   const NodeID &GetNodeID() const;
@@ -54,9 +56,9 @@ class GcsActorWorkerAssignment
   const ResourceRequest acquired_resources_;
 };
 
-/// GcsBasedActorScheduler inherits from GcsActorScheduler. Its scheduling strategy is
-/// based on a resource-based node selection. Any rescheduling is also based on GCS,
-/// instead of Raylet-based spillback.
+/// GcsBasedActorScheduler inherits from GcsActorScheduler. Its scheduling
+/// strategy is based on a resource-based node selection. Any rescheduling is
+/// also based on GCS, instead of Raylet-based spillback.
 class GcsBasedActorScheduler : public GcsActorScheduler {
  public:
   /// Create a GcsBasedActorScheduler
@@ -64,15 +66,13 @@ class GcsBasedActorScheduler : public GcsActorScheduler {
   /// \param io_context The main event loop.
   /// \param gcs_actor_table Used to flush actor info to storage.
   /// \param gcs_node_manager The node manager which is used when scheduling.
-  /// \param cluster_resource_scheduler The scheduler to select nodes based on cluster
-  /// resources.
-  /// \param schedule_failure_handler Invoked when there are no available nodes to
-  /// schedule actors.
-  /// \param schedule_success_handler Invoked when actors are created on the worker
-  /// successfully.
-  /// \param raylet_client_pool Raylet client pool to construct connections to raylets.
-  /// \param client_factory Factory to create remote core worker client, default factor
-  /// will be used if not set.
+  /// \param cluster_resource_scheduler The scheduler to select nodes based on
+  /// cluster resources. \param schedule_failure_handler Invoked when there are
+  /// no available nodes to schedule actors. \param schedule_success_handler
+  /// Invoked when actors are created on the worker successfully. \param
+  /// raylet_client_pool Raylet client pool to construct connections to raylets.
+  /// \param client_factory Factory to create remote core worker client, default
+  /// factor will be used if not set.
   explicit GcsBasedActorScheduler(
       instrumented_io_context &io_context,
       GcsActorTable &gcs_actor_table,
@@ -99,12 +99,14 @@ class GcsBasedActorScheduler : public GcsActorScheduler {
   /// Select a node for the actor based on cluster resources.
   ///
   /// \param actor The actor to be scheduled.
-  /// \return The selected node's ID. If the selection fails, NodeID::Nil() is returned.
+  /// \return The selected node's ID. If the selection fails, NodeID::Nil() is
+  /// returned.
   NodeID SelectNode(std::shared_ptr<GcsActor> actor) override;
 
   /// Handler to process a worker lease reply.
   /// If a rejection is received, it means resources were preempted by normal
-  /// tasks. Then update the the cluster resource view and reschedule immediately.
+  /// tasks. Then update the the cluster resource view and reschedule
+  /// immediately.
   ///
   /// \param actor The actor to be scheduled.
   /// \param node The selected node at which a worker is to be leased.
@@ -122,13 +124,14 @@ class GcsBasedActorScheduler : public GcsActorScheduler {
   std::unique_ptr<GcsActorWorkerAssignment> AllocateActorWorkerAssignment(
       const TaskSpecification &task_spec);
 
-  /// TODO(Chong-Li): This is to accommodate the Raylet scheduling's behavior (different
-  /// resources for scheduling and allocation). We need to unify these two at the end.
-  /// Allocate resources for the actor.
+  /// TODO(Chong-Li): This is to accommodate the Raylet scheduling's behavior
+  /// (different resources for scheduling and allocation). We need to unify
+  /// these two at the end. Allocate resources for the actor.
   ///
   /// \param required_placement_resources The required resources of the task for
-  /// scheduling. \param required_resources The required resources of the task for
-  /// allocation. \return ID of the node from which the resources are allocated.
+  /// scheduling. \param required_resources The required resources of the task
+  /// for allocation. \return ID of the node from which the resources are
+  /// allocated.
   scheduling::NodeID AllocateResources(
       const ResourceRequest &required_placement_resources,
       const ResourceRequest &required_resources);

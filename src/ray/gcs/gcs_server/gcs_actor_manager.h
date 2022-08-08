@@ -34,9 +34,8 @@ namespace ray {
 namespace gcs {
 class GcsActorWorkerAssignment;
 
-/// GcsActor just wraps `ActorTableData` and provides some convenient interfaces to access
-/// the fields inside `ActorTableData`.
-/// This class is not thread-safe.
+/// GcsActor just wraps `ActorTableData` and provides some convenient interfaces
+/// to access the fields inside `ActorTableData`. This class is not thread-safe.
 class GcsActor {
  public:
   /// Create a GcsActor by actor_table_data.
@@ -154,11 +153,12 @@ class GcsActor {
   void SetActorWorkerAssignment(std::shared_ptr<GcsActorWorkerAssignment> assignment_ptr);
 
  private:
-  /// The actor meta data which contains the task specification as well as the state of
-  /// the gcs actor and so on (see gcs.proto).
+  /// The actor meta data which contains the task specification as well as the
+  /// state of the gcs actor and so on (see gcs.proto).
   rpc::ActorTableData actor_table_data_;
   const std::unique_ptr<rpc::TaskSpec> task_spec_;
-  // TODO(Chong-Li): Considering shared assignments, this pointer would be moved out.
+  // TODO(Chong-Li): Considering shared assignments, this pointer would be moved
+  // out.
   std::shared_ptr<GcsActorWorkerAssignment> assignment_ptr_ = nullptr;
 };
 
@@ -177,38 +177,37 @@ using CreateActorCallback =
 ///             |                      v              |             |
 ///              ------------------> DEAD <-------------------------
 ///
-/// 0: When GCS receives a `RegisterActor` request from core worker, it will add an actor
-/// to `registered_actors_` and `unresolved_actors_`.
-/// 1: When GCS receives a `CreateActor` request from core worker, it will remove the
-/// actor from `unresolved_actors_` and schedule the actor.
-/// 2: GCS selects a node to lease worker. If the worker is successfully leased,
-/// GCS will push actor creation task to the core worker, else GCS will select another
-/// node to lease worker. If the actor is created successfully, GCS will add the actor to
+/// 0: When GCS receives a `RegisterActor` request from core worker, it will add
+/// an actor to `registered_actors_` and `unresolved_actors_`. 1: When GCS
+/// receives a `CreateActor` request from core worker, it will remove the actor
+/// from `unresolved_actors_` and schedule the actor. 2: GCS selects a node to
+/// lease worker. If the worker is successfully leased, GCS will push actor
+/// creation task to the core worker, else GCS will select another node to lease
+/// worker. If the actor is created successfully, GCS will add the actor to
 /// `created_actors_`.
 /// 3: When GCS detects that the worker/node of an actor is dead, it
-/// will get actor from `registered_actors_` by actor id. If the actor's remaining
-/// restarts number is greater than 0, it will reconstruct the actor.
-/// 4: When the actor is successfully reconstructed, GCS will update its state to `ALIVE`.
-/// 5: If the actor is restarting, GCS detects that its worker or node is dead and its
-/// remaining restarts number is 0, it will update its state to `DEAD`. If the actor is
-/// detached, GCS will remove it from `registered_actors_` and `created_actors_`. If the
-/// actor is non-detached, when GCS detects that its owner is dead, GCS will remove it
-/// from `registered_actors_`.
-/// 6: When GCS detected that an actor is dead, GCS will
-/// reconstruct it. If its remaining restarts number is 0, it will update its state to
-/// `DEAD`. If the actor is detached, GCS will remove it from `registered_actors_` and
-/// `created_actors_`. If the actor is non-detached, when GCS detects that its owner is
-/// dead, it will destroy the actor and remove it from `registered_actors_` and
-/// `created_actors_`.
-/// 7: If the actor is non-detached, when GCS detects that its owner is
-/// dead, it will destroy the actor and remove it from `registered_actors_` and
-/// `created_actors_`.
-/// 8: For both detached and non-detached actors, when GCS detects that
-/// an actor's creator is dead, it will update its state to `DEAD` and remove it from
-/// `registered_actors_` and `created_actors_`. Because in this case, the actor can never
-/// be created. If the actor is non-detached, when GCS detects that its owner is dead, it
-/// will update its state to `DEAD` and remove it from `registered_actors_` and
-/// `created_actors_`.
+/// will get actor from `registered_actors_` by actor id. If the actor's
+/// remaining restarts number is greater than 0, it will reconstruct the actor.
+/// 4: When the actor is successfully reconstructed, GCS will update its state
+/// to `ALIVE`. 5: If the actor is restarting, GCS detects that its worker or
+/// node is dead and its remaining restarts number is 0, it will update its
+/// state to `DEAD`. If the actor is detached, GCS will remove it from
+/// `registered_actors_` and `created_actors_`. If the actor is non-detached,
+/// when GCS detects that its owner is dead, GCS will remove it from
+/// `registered_actors_`. 6: When GCS detected that an actor is dead, GCS will
+/// reconstruct it. If its remaining restarts number is 0, it will update its
+/// state to `DEAD`. If the actor is detached, GCS will remove it from
+/// `registered_actors_` and `created_actors_`. If the actor is non-detached,
+/// when GCS detects that its owner is dead, it will destroy the actor and
+/// remove it from `registered_actors_` and `created_actors_`. 7: If the actor
+/// is non-detached, when GCS detects that its owner is dead, it will destroy
+/// the actor and remove it from `registered_actors_` and `created_actors_`. 8:
+/// For both detached and non-detached actors, when GCS detects that an actor's
+/// creator is dead, it will update its state to `DEAD` and remove it from
+/// `registered_actors_` and `created_actors_`. Because in this case, the actor
+/// can never be created. If the actor is non-detached, when GCS detects that
+/// its owner is dead, it will update its state to `DEAD` and remove it from
+/// `registered_actors_` and `created_actors_`.
 class GcsActorManager : public rpc::ActorInfoHandler {
  public:
   /// Create a GcsActorManager
@@ -262,29 +261,28 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   /// Register actor asynchronously.
   ///
   /// \param request Contains the meta info to create the actor.
-  /// \param success_callback Will be invoked after the actor is created successfully or
-  /// be invoked immediately if the actor is already registered to `registered_actors_`
-  /// and its state is `ALIVE`.
-  /// \return Status::Invalid if this is a named actor and an
-  /// actor with the specified name already exists. The callback will not be called in
-  /// this case.
+  /// \param success_callback Will be invoked after the actor is created
+  /// successfully or be invoked immediately if the actor is already registered
+  /// to `registered_actors_` and its state is `ALIVE`. \return Status::Invalid
+  /// if this is a named actor and an actor with the specified name already
+  /// exists. The callback will not be called in this case.
   Status RegisterActor(const rpc::RegisterActorRequest &request,
                        RegisterActorCallback success_callback);
 
   /// Create actor asynchronously.
   ///
   /// \param request Contains the meta info to create the actor.
-  /// \param callback Will be invoked after the actor is created successfully or be
-  /// invoked immediately if the actor is already registered to `registered_actors_` and
-  /// its state is `ALIVE`.
-  /// \return Status::Invalid if this is a named actor and an actor with the specified
-  /// name already exists. The callback will not be called in this case.
+  /// \param callback Will be invoked after the actor is created successfully or
+  /// be invoked immediately if the actor is already registered to
+  /// `registered_actors_` and its state is `ALIVE`. \return Status::Invalid if
+  /// this is a named actor and an actor with the specified name already exists.
+  /// The callback will not be called in this case.
   Status CreateActor(const rpc::CreateActorRequest &request,
                      CreateActorCallback callback);
 
-  /// Get the actor ID for the named actor. Returns nil if the actor was not found.
-  /// \param name The name of the detached actor to look up.
-  /// \returns ActorID The ID of the actor. Nil if the actor was not found.
+  /// Get the actor ID for the named actor. Returns nil if the actor was not
+  /// found. \param name The name of the detached actor to look up. \returns
+  /// ActorID The ID of the actor. Nil if the actor was not found.
   ActorID GetActorIDByName(const std::string &name,
                            const std::string &ray_namespace) const;
 
@@ -295,16 +293,16 @@ class GcsActorManager : public rpc::ActorInfoHandler {
 
   /// Get names of named actors.
   //
-  /// \param[in] all_namespaces Whether to include actors from all Ray namespaces.
-  /// \param[in] namespace The namespace to filter to if all_namespaces is false.
-  /// \returns List of <namespace, name> pairs.
+  /// \param[in] all_namespaces Whether to include actors from all Ray
+  /// namespaces. \param[in] namespace The namespace to filter to if
+  /// all_namespaces is false. \returns List of <namespace, name> pairs.
   std::vector<std::pair<std::string, std::string>> ListNamedActors(
       bool all_namespaces, const std::string &ray_namespace) const;
 
   /// Schedule actors in the `pending_actors_` queue.
   /// This method should be called when new nodes are registered or resources
   /// change.
-  void SchedulePendingActors();
+  virtual void SchedulePendingActors();
 
   /// Handle a node death. This will restart all actors associated with the
   /// specified node id, including actors which are scheduled or have been
@@ -323,8 +321,8 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   /// \param node_id ID of the node where the dead worker was located.
   /// \param worker_id ID of the dead worker.
   /// \param exit_type exit reason of the dead worker.
-  /// \param creation_task_exception if this arg is set, this worker is died because of an
-  /// exception thrown in actor's creation task.
+  /// \param creation_task_exception if this arg is set, this worker is died
+  /// because of an exception thrown in actor's creation task.
   void OnWorkerDead(const NodeID &node_id,
                     const WorkerID &worker_id,
                     const std::string &worker_ip,
@@ -336,8 +334,8 @@ class GcsActorManager : public rpc::ActorInfoHandler {
 
   /// Handle actor creation task failure. This should be called
   /// - when scheduling an actor creation task is infeasible.
-  /// - when actor cannot be created to the cluster (e.g., runtime environment ops
-  /// failed).
+  /// - when actor cannot be created to the cluster (e.g., runtime environment
+  /// ops failed).
   ///
   /// \param actor The actor whose creation task is infeasible.
   /// \param failure_type Scheduling failure type.
@@ -360,8 +358,8 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   /// \param gcs_init_data.
   void Initialize(const GcsInitData &gcs_init_data);
 
-  /// Delete non-detached actor information from durable storage once the associated job
-  /// finishes.
+  /// Delete non-detached actor information from durable storage once the
+  /// associated job finishes.
   ///
   /// \param job_id The id of finished job.
   void OnJobFinished(const JobID &job_id);
@@ -387,7 +385,6 @@ class GcsActorManager : public rpc::ActorInfoHandler {
 
   void SetSchedulePendingActorsPosted(bool posted);
 
- private:
   /// A data structure representing an actor's owner.
   struct Owner {
     Owner(std::shared_ptr<rpc::CoreWorkerClientInterface> client)
@@ -407,8 +404,8 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   /// state associated with the actor and marks the actor as dead. For owned
   /// actors, this should be called when all actor handles have gone out of
   /// scope or the owner has died.
-  /// NOTE: This method can be called multiple times in out-of-order and should be
-  /// idempotent.
+  /// NOTE: This method can be called multiple times in out-of-order and should
+  /// be idempotent.
   ///
   /// \param[in] actor_id The actor id to destroy.
   /// \param[in] death_cause The reason why actor is destroyed.
@@ -428,11 +425,10 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   /// Reconstruct the specified actor.
   ///
   /// \param actor The target actor to be reconstructed.
-  /// \param need_reschedule Whether to reschedule the actor creation task, sometimes
-  /// users want to kill an actor intentionally and don't want it to be reconstructed
-  /// again.
-  /// \param death_cause Context about why this actor is dead. Should only be set when
-  /// need_reschedule=false.
+  /// \param need_reschedule Whether to reschedule the actor creation task,
+  /// sometimes users want to kill an actor intentionally and don't want it to
+  /// be reconstructed again. \param death_cause Context about why this actor is
+  /// dead. Should only be set when need_reschedule=false.
   void ReconstructActor(const ActorID &actor_id,
                         bool need_reschedule,
                         const rpc::ActorDeathCause &death_cause);
@@ -451,20 +447,22 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   ///
   /// \param actor_id ID of the actor to kill.
   /// \param force_kill Whether to force kill an actor by killing the worker.
-  /// \param no_restart If set to true, the killed actor will not be restarted anymore.
+  /// \param no_restart If set to true, the killed actor will not be restarted
+  /// anymore.
   void KillActor(const ActorID &actor_id, bool force_kill, bool no_restart);
 
   /// Notify CoreWorker to kill the specified actor.
   ///
   /// \param actor The actor to be killed.
   /// \param force_kill Whether to force kill an actor by killing the worker.
-  /// \param no_restart If set to true, the killed actor will not be restarted anymore.
+  /// \param no_restart If set to true, the killed actor will not be restarted
+  /// anymore.
   void NotifyCoreWorkerToKillActor(const std::shared_ptr<GcsActor> &actor,
                                    bool force_kill = true,
                                    bool no_restart = true);
 
-  /// Add the destroyed actor to the cache. If the cache is full, one actor is randomly
-  /// evicted.
+  /// Add the destroyed actor to the cache. If the cache is full, one actor is
+  /// randomly evicted.
   ///
   /// \param actor The actor to be killed.
   void AddDestroyedActorToCache(const std::shared_ptr<GcsActor> &actor);
@@ -478,7 +476,8 @@ class GcsActorManager : public rpc::ActorInfoHandler {
     actor_delta->set_num_restarts(actor.num_restarts());
     actor_delta->set_timestamp(actor.timestamp());
     actor_delta->set_pid(actor.pid());
-    // Acotr's namespace and name are used for removing cached name when it's dead.
+    // Acotr's namespace and name are used for removing cached name when it's
+    // dead.
     if (!actor.ray_namespace().empty()) {
       actor_delta->set_ray_namespace(actor.ray_namespace());
     }
@@ -505,13 +504,14 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   const GcsActor *GetActor(const ActorID &actor_id) const;
 
   /// Callbacks of pending `RegisterActor` requests.
-  /// Maps actor ID to actor registration callbacks, which is used to filter duplicated
-  /// messages from a driver/worker caused by some network problems.
+  /// Maps actor ID to actor registration callbacks, which is used to filter
+  /// duplicated messages from a driver/worker caused by some network problems.
   absl::flat_hash_map<ActorID, std::vector<RegisterActorCallback>>
       actor_to_register_callbacks_;
   /// Callbacks of actor creation requests.
-  /// Maps actor ID to actor creation callbacks, which is used to filter duplicated
-  /// messages come from a Driver/Worker caused by some network problems.
+  /// Maps actor ID to actor creation callbacks, which is used to filter
+  /// duplicated messages come from a Driver/Worker caused by some network
+  /// problems.
   absl::flat_hash_map<ActorID, std::vector<CreateActorCallback>>
       actor_to_create_callbacks_;
   /// All registered actors (unresoved and pending actors are also included).
@@ -519,20 +519,21 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   absl::flat_hash_map<ActorID, std::shared_ptr<GcsActor>> registered_actors_;
   /// All destroyed actors.
   absl::flat_hash_map<ActorID, std::shared_ptr<GcsActor>> destroyed_actors_;
-  /// The actors are sorted according to the timestamp, and the oldest is at the head of
-  /// the list.
+  /// The actors are sorted according to the timestamp, and the oldest is at the
+  /// head of the list.
   std::list<std::pair<ActorID, int64_t>> sorted_destroyed_actor_list_;
-  /// Maps actor names to their actor ID for lookups by name, first keyed by their
-  /// namespace.
+  /// Maps actor names to their actor ID for lookups by name, first keyed by
+  /// their namespace.
   absl::flat_hash_map<std::string, absl::flat_hash_map<std::string, ActorID>>
       named_actors_;
   /// The actors which dependencies have not been resolved.
-  /// Maps from worker ID to a client and the IDs of the actors owned by that worker.
-  /// The actor whose dependencies are not resolved should be destroyed once it creator
-  /// dies.
+  /// Maps from worker ID to a client and the IDs of the actors owned by that
+  /// worker. The actor whose dependencies are not resolved should be destroyed
+  /// once it creator dies.
   absl::flat_hash_map<NodeID, absl::flat_hash_map<WorkerID, absl::flat_hash_set<ActorID>>>
       unresolved_actors_;
-  /// The pending actors which will not be scheduled until there's a resource change.
+  /// The pending actors which will not be scheduled until there's a resource
+  /// change.
   std::vector<std::shared_ptr<GcsActor>> pending_actors_;
   /// Map contains the relationship of node and created actors. Each node ID
   /// maps to a map from worker ID to the actor created on that worker.
@@ -553,8 +554,8 @@ class GcsActorManager : public rpc::ActorInfoHandler {
   /// actors and their owners.
   rpc::ClientFactoryFn worker_client_factory_;
   /// A callback that is used to destroy placemenet group owned by the actor.
-  /// This method MUST BE IDEMPOTENT because it can be called multiple times during
-  /// actor destroy process.
+  /// This method MUST BE IDEMPOTENT because it can be called multiple times
+  /// during actor destroy process.
   std::function<void(const ActorID &)> destroy_owned_placement_group_if_needed_;
   /// A callback to get the job config of an actor based on its job id. This is
   /// necessary for actor creation.

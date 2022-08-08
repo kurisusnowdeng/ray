@@ -54,8 +54,8 @@ void ClusterTaskManager::QueueAndScheduleTask(
         send_reply_callback(Status::OK(), nullptr, nullptr);
       });
   const auto &scheduling_class = task.GetTaskSpecification().GetSchedulingClass();
-  // If the scheduling class is infeasible, just add the work to the infeasible queue
-  // directly.
+  // If the scheduling class is infeasible, just add the work to the infeasible
+  // queue directly.
   if (infeasible_tasks_.count(scheduling_class) > 0) {
     infeasible_tasks_[scheduling_class].push_back(work);
   } else {
@@ -110,15 +110,16 @@ void ClusterTaskManager::ScheduleAndDispatchTasks() {
 
         if (task.GetTaskSpecification().IsNodeAffinitySchedulingStrategy() &&
             !task.GetTaskSpecification().GetNodeAffinitySchedulingStrategySoft()) {
-          // This can only happen if the target node doesn't exist or is infeasible.
-          // The task will never be schedulable in either case so we should fail it.
-          ReplyCancelled(
-              *work,
-              rpc::RequestWorkerLeaseReply::SCHEDULING_CANCELLED_UNSCHEDULABLE,
-              "The node specified via NodeAffinitySchedulingStrategy doesn't exist "
-              "any more or is infeasible, and soft=False was specified.");
-          // We don't want to trigger the normal infeasible task logic (i.e. waiting),
-          // but rather we want to fail the task immediately.
+          // This can only happen if the target node doesn't exist or is
+          // infeasible. The task will never be schedulable in either case so we
+          // should fail it.
+          ReplyCancelled(*work,
+                         rpc::RequestWorkerLeaseReply::SCHEDULING_CANCELLED_UNSCHEDULABLE,
+                         "The node specified via NodeAffinitySchedulingStrategy doesn't "
+                         "exist "
+                         "any more or is infeasible, and soft=False was specified.");
+          // We don't want to trigger the normal infeasible task logic (i.e.
+          // waiting), but rather we want to fail the task immediately.
           work_it = work_queue.erase(work_it);
           is_infeasible = false;
           continue;
@@ -159,8 +160,9 @@ void ClusterTaskManager::TryScheduleInfeasibleTask() {
     auto &work_queue = shapes_it->second;
     RAY_CHECK(!work_queue.empty())
         << "Empty work queue shouldn't have been added as a infeasible shape.";
-    // We only need to check the first item because every task has the same shape.
-    // If the first entry is infeasible, that means everything else is the same.
+    // We only need to check the first item because every task has the same
+    // shape. If the first entry is infeasible, that means everything else is
+    // the same.
     const auto work = work_queue[0];
     RayTask task = work->task;
     RAY_LOG(DEBUG) << "Check if the infeasible task is schedulable in any node. task_id:"
@@ -193,8 +195,8 @@ bool ClusterTaskManager::CancelTask(
     const TaskID &task_id,
     rpc::RequestWorkerLeaseReply::SchedulingFailureType failure_type,
     const std::string &scheduling_failure_message) {
-  // TODO(sang): There are lots of repetitive code around task backlogs. We should
-  // refactor them.
+  // TODO(sang): There are lots of repetitive code around task backlogs. We
+  // should refactor them.
   for (auto shapes_it = tasks_to_schedule_.begin(); shapes_it != tasks_to_schedule_.end();
        shapes_it++) {
     auto &work_queue = shapes_it->second;
@@ -248,23 +250,23 @@ bool ClusterTaskManager::AnyPendingTasksForResourceAcquisition(
     bool *any_pending,
     int *num_pending_actor_creation,
     int *num_pending_tasks) const {
-  // We are guaranteed that these tasks are blocked waiting for resources after a
-  // call to ScheduleAndDispatchTasks(). They may be waiting for workers as well, but
-  // this should be a transient condition only.
+  // We are guaranteed that these tasks are blocked waiting for resources after
+  // a call to ScheduleAndDispatchTasks(). They may be waiting for workers as
+  // well, but this should be a transient condition only.
   for (const auto &shapes_it : tasks_to_schedule_) {
     auto &work_queue = shapes_it.second;
     for (const auto &work_it : work_queue) {
       const auto &work = *work_it;
       const auto &task = work_it->task;
 
-      // If the work is not in the waiting state, it will be scheduled soon or won't be
-      // scheduled. Consider as non-pending.
+      // If the work is not in the waiting state, it will be scheduled soon or
+      // won't be scheduled. Consider as non-pending.
       if (work.GetState() != internal::WorkStatus::WAITING) {
         continue;
       }
 
-      // If the work is not waiting for acquiring resources, we don't consider it as
-      // there's resource deadlock.
+      // If the work is not waiting for acquiring resources, we don't consider
+      // it as there's resource deadlock.
       if (work.GetUnscheduledCause() !=
               internal::UnscheduledWorkCause::WAITING_FOR_RESOURCE_ACQUISITION &&
           work.GetUnscheduledCause() !=

@@ -1,3 +1,6 @@
+// Adopted from Ray 1.13.0
+// https://github.com/ray-project/ray/blob/releases/1.13.0/src/ray/raylet/raylet.h
+
 // Copyright 2017 The Ray Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +22,10 @@
 #include <list>
 
 // clang-format off
-#include "ray/raylet/node_manager.h"
 #include "ray/object_manager/object_manager.h"
 #include "ray/common/task/scheduling_resources.h"
 #include "ray/common/asio/instrumented_io_context.h"
+#include "ray/raylet/node_manager.h"
 // clang-format on
 
 namespace ray {
@@ -38,10 +41,10 @@ class Raylet {
   /// Create a raylet server and listen for local clients.
   ///
   /// \param main_service The event loop to run the server on.
-  /// \param object_manager_service The asio io_service tied to the object manager.
-  /// \param socket_name The Unix domain socket to listen on for local clients.
-  /// \param node_ip_address The IP address of this node.
-  /// \param node_manager_config Configuration to initialize the node manager.
+  /// \param object_manager_service The asio io_service tied to the object
+  /// manager. \param socket_name The Unix domain socket to listen on for local
+  /// clients. \param node_ip_address The IP address of this node. \param
+  /// node_manager_config Configuration to initialize the node manager.
   /// scheduler with.
   /// \param object_manager_config Configuration to initialize the object
   /// manager.
@@ -53,6 +56,14 @@ class Raylet {
          const std::string &node_name,
          const NodeManagerConfig &node_manager_config,
          const ObjectManagerConfig &object_manager_config,
+         std::shared_ptr<gcs::GcsClient> gcs_client,
+         int metrics_export_port);
+
+  // Initialize without node manager
+  Raylet(instrumented_io_context &main_service,
+         const std::string &socket_name,
+         const std::string &node_ip_address,
+         const std::string &node_name,
          std::shared_ptr<gcs::GcsClient> gcs_client,
          int metrics_export_port);
 
@@ -81,15 +92,8 @@ class Raylet {
   // Main event loop.
   instrumented_io_context &main_service_;
 
-  /// ID of this node.
-  NodeID self_node_id_;
-  /// Information of this node.
-  GcsNodeInfo self_node_info_;
-
   /// A client connection to the GCS.
   std::shared_ptr<gcs::GcsClient> gcs_client_;
-  /// Manages client requests for task submission and execution.
-  NodeManager node_manager_;
   /// The name of the socket this raylet listens on.
   std::string socket_name_;
 
@@ -97,6 +101,14 @@ class Raylet {
   boost::asio::basic_socket_acceptor<local_stream_protocol> acceptor_;
   /// The socket to listen on for new clients.
   local_stream_socket socket_;
+
+ protected:
+  /// ID of this node.
+  NodeID self_node_id_;
+  /// Information of this node.
+  GcsNodeInfo self_node_info_;
+  /// Manages client requests for task submission and execution.
+  std::shared_ptr<NodeManager> node_manager_;
 };
 
 }  // namespace raylet

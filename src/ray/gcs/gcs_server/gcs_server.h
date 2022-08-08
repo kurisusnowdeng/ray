@@ -87,7 +87,7 @@ class GcsServer {
   /// Generate the redis client options
   RedisClientOptions GetRedisClientOptions() const;
 
-  void DoStart(const GcsInitData &gcs_init_data);
+  virtual void DoStart(const GcsInitData &gcs_init_data);
 
   /// Initialize gcs node manager.
   void InitGcsNodeManager(const GcsInitData &gcs_init_data);
@@ -99,7 +99,7 @@ class GcsServer {
   void InitGcsResourceManager(const GcsInitData &gcs_init_data);
 
   /// Initialize synchronization service
-  void InitRaySyncer(const GcsInitData &gcs_init_data);
+  virtual void InitRaySyncer(const GcsInitData &gcs_init_data);
 
   /// Initialize cluster resource scheduler.
   void InitClusterResourceScheduler();
@@ -108,7 +108,7 @@ class GcsServer {
   void InitGcsJobManager(const GcsInitData &gcs_init_data);
 
   /// Initialize gcs actor manager.
-  void InitGcsActorManager(const GcsInitData &gcs_init_data);
+  virtual void InitGcsActorManager(const GcsInitData &gcs_init_data);
 
   /// Initialize gcs placement group manager.
   void InitGcsPlacementGroupManager(const GcsInitData &gcs_init_data);
@@ -132,17 +132,17 @@ class GcsServer {
   void InitRuntimeEnvManager();
 
   /// Install event listeners.
-  void InstallEventListeners();
+  virtual void InstallEventListeners();
 
- private:
   /// Gets the type of KV storage to use from config.
   std::string StorageType() const;
 
   /// Store the address of GCS server in Redis.
   ///
-  /// Clients will look up this address in Redis and use it to connect to GCS server.
-  /// TODO(ffbin): Once we entirely migrate to service-based GCS, we should pass GCS
-  /// server address directly to raylets and get rid of this lookup.
+  /// Clients will look up this address in Redis and use it to connect to GCS
+  /// server.
+  /// TODO(ffbin): Once we entirely migrate to service-based GCS, we should pass
+  /// GCS server address directly to raylets and get rid of this lookup.
   void StoreGcsServerAddressInRedis();
 
   /// Print debug info periodically.
@@ -166,14 +166,15 @@ class GcsServer {
   const std::string storage_type_;
   /// The main io service to drive event posted from grpc threads.
   instrumented_io_context &main_service_;
-  /// The io service used by heartbeat manager in case of node failure detector being
-  /// blocked by main thread.
+  /// The io service used by heartbeat manager in case of node failure detector
+  /// being blocked by main thread.
   instrumented_io_context heartbeat_manager_io_service_;
   /// The io service used by Pubsub, for isolation from other workload.
   instrumented_io_context pubsub_io_service_;
   /// The grpc server
   rpc::GrpcServer rpc_server_;
-  /// The `ClientCallManager` object that is shared by all `NodeManagerWorkerClient`s.
+  /// The `ClientCallManager` object that is shared by all
+  /// `NodeManagerWorkerClient`s.
   rpc::ClientCallManager client_call_manager_;
   /// Node manager client pool.
   std::shared_ptr<rpc::NodeManagerClientPool> raylet_client_pool_;

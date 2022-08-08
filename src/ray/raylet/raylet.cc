@@ -1,3 +1,6 @@
+// Adopted from Ray 1.13.0
+// https://github.com/ray-project/ray/blob/releases/1.13.0/src/ray/raylet/raylet.cc
+
 // Copyright 2017 The Ray Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,33 +67,55 @@ Raylet::Raylet(instrumented_io_context &main_service,
                std::shared_ptr<gcs::GcsClient> gcs_client,
                int metrics_export_port)
     : main_service_(main_service),
+      gcs_client_(gcs_client),
+      socket_name_(socket_name),
+      acceptor_(main_service, ParseUrlEndpoint(socket_name)),
+      socket_(main_service),
       self_node_id_(
           !RayConfig::instance().OVERRIDE_NODE_ID_FOR_TESTING().empty()
               ? NodeID::FromHex(RayConfig::instance().OVERRIDE_NODE_ID_FOR_TESTING())
-              : NodeID::FromRandom()),
-      gcs_client_(gcs_client),
-      node_manager_(main_service,
-                    self_node_id_,
-                    node_name,
-                    node_manager_config,
-                    object_manager_config,
-                    gcs_client_),
-      socket_name_(socket_name),
-      acceptor_(main_service, ParseUrlEndpoint(socket_name)),
-      socket_(main_service) {
+              : NodeID::FromRandom()) {
+  node_manager_ = std::make_shared<NodeManager>(main_service,
+                                                self_node_id_,
+                                                node_name,
+                                                node_manager_config,
+                                                object_manager_config,
+                                                gcs_client);
   self_node_info_.set_node_id(self_node_id_.Binary());
   self_node_info_.set_state(GcsNodeInfo::ALIVE);
   self_node_info_.set_node_manager_address(node_ip_address);
   self_node_info_.set_node_name(node_name);
   self_node_info_.set_raylet_socket_name(socket_name);
   self_node_info_.set_object_store_socket_name(object_manager_config.store_socket_name);
-  self_node_info_.set_object_manager_port(node_manager_.GetObjectManagerPort());
-  self_node_info_.set_node_manager_port(node_manager_.GetServerPort());
+  self_node_info_.set_object_manager_port(node_manager_->GetObjectManagerPort());
+  self_node_info_.set_node_manager_port(node_manager_->GetServerPort());
   self_node_info_.set_node_manager_hostname(boost::asio::ip::host_name());
   self_node_info_.set_metrics_export_port(metrics_export_port);
   auto resource_map = node_manager_config.resource_config.ToResourceMap();
   self_node_info_.mutable_resources_total()->insert(resource_map.begin(),
                                                     resource_map.end());
+}
+
+Raylet::Raylet(instrumented_io_context &main_service,
+               const std::string &socket_name,
+               const std::string &node_ip_address,
+               const std::string &node_name,
+               std::shared_ptr<gcs::GcsClient> gcs_client,
+               int metrics_export_port)
+    : main_service_(main_service),
+      gcs_client_(gcs_client),
+      socket_name_(socket_name),
+      acceptor_(main_service, ParseUrlEndpoint(socket_name)),
+      socket_(main_service),
+      self_node_id_(
+          !RayConfig::instance().OVERRIDE_NODE_ID_FOR_TESTING().empty()
+              ? NodeID::FromHex(RayConfig::instance().OVERRIDE_NODE_ID_FOR_TESTING())
+              : NodeID::FromRandom()) {
+  self_node_info_.set_node_id(self_node_id_.Binary());
+  self_node_info_.set_state(GcsNodeInfo::ALIVE);
+  self_node_info_.set_node_name(node_name);
+  self_node_info_.set_raylet_socket_name(socket_name);
+  self_node_info_.set_metrics_export_port(metrics_export_port);
 }
 
 Raylet::~Raylet() {}
@@ -104,7 +129,7 @@ void Raylet::Start() {
 
 void Raylet::Stop() {
   RAY_CHECK_OK(gcs_client_->Nodes().DrainSelf());
-  node_manager_.Stop();
+  node_manager_->Stop();
   acceptor_.close();
 }
 
@@ -118,7 +143,7 @@ ray::Status Raylet::RegisterGcs() {
                   << " object_manager address: " << self_node_info_.node_manager_address()
                   << ":" << self_node_info_.object_manager_port()
                   << " hostname: " << self_node_info_.node_manager_address();
-    RAY_CHECK_OK(node_manager_.RegisterGcs());
+    RAY_CHECK_OK(node_manager_->RegisterGcs());
   };
 
   RAY_RETURN_NOT_OK(
@@ -136,12 +161,12 @@ void Raylet::HandleAccept(const boost::system::error_code &error) {
   if (!error) {
     // TODO: typedef these handlers.
     ClientHandler client_handler = [this](ClientConnection &client) {
-      node_manager_.ProcessNewClient(client);
+      node_manager_->ProcessNewClient(client);
     };
     MessageHandler message_handler = [this](std::shared_ptr<ClientConnection> client,
                                             int64_t message_type,
                                             const std::vector<uint8_t> &message) {
-      node_manager_.ProcessClientMessage(client, message_type, message.data());
+      node_manager_->ProcessClientMessage(client, message_type, message.data());
     };
     flatbuffers::FlatBufferBuilder fbb;
     protocol::DisconnectClientBuilder builder(fbb);

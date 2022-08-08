@@ -197,9 +197,9 @@ void GcsServer::Stop() {
     RAY_LOG(INFO) << "Stopping GCS server.";
     // GcsHeartbeatManager should be stopped before RPCServer.
     // Because closing RPC server will cost several seconds, during this time,
-    // GcsHeartbeatManager is still checking nodes' heartbeat timeout. Since RPC Server
-    // won't handle heartbeat calls anymore, some nodes will be marked as dead during this
-    // time, causing many nodes die after GCS's failure.
+    // GcsHeartbeatManager is still checking nodes' heartbeat timeout. Since RPC
+    // Server won't handle heartbeat calls anymore, some nodes will be marked as
+    // dead during this time, causing many nodes die after GCS's failure.
     gcs_heartbeat_manager_->Stop();
 
     ray_syncer_->Stop();
@@ -260,8 +260,8 @@ void GcsServer::InitGcsResourceManager(const GcsInitData &gcs_init_data) {
       [this] {
         for (const auto &alive_node : gcs_node_manager_->GetAllAliveNodes()) {
           std::shared_ptr<ray::RayletClientInterface> raylet_client;
-          // GetOrConnectionByID will not connect to the raylet is it hasn't been
-          // connected.
+          // GetOrConnectionByID will not connect to the raylet is it hasn't
+          // been connected.
           if (auto conn_opt = raylet_client_pool_->GetOrConnectByID(alive_node.first)) {
             raylet_client = *conn_opt;
           } else {
@@ -315,8 +315,8 @@ void GcsServer::InitGcsActorManager(const GcsInitData &gcs_init_data) {
              const rpc::RequestWorkerLeaseReply::SchedulingFailureType failure_type,
              const std::string &scheduling_failure_message) {
         // When there are no available nodes to schedule the actor the
-        // gcs_actor_scheduler will treat it as failed and invoke this handler. In
-        // this case, the actor manager should schedule the actor once an
+        // gcs_actor_scheduler will treat it as failed and invoke this handler.
+        // In this case, the actor manager should schedule the actor once an
         // eligible node is registered.
         gcs_actor_manager_->OnActorSchedulingFailed(
             std::move(actor), failure_type, scheduling_failure_message);
@@ -373,10 +373,12 @@ void GcsServer::InitGcsActorManager(const GcsInitData &gcs_init_data) {
           if (error != boost::asio::error::operation_aborted) {
             fn();
           } else {
-            RAY_LOG(WARNING)
-                << "The GCS actor metadata garbage collector timer failed to fire. This "
-                   "could old actor metadata not being properly cleaned up. For more "
-                   "information, check logs/gcs_server.err and logs/gcs_server.out";
+            RAY_LOG(WARNING) << "The GCS actor metadata garbage collector "
+                                "timer failed to fire. This "
+                                "could old actor metadata not being properly "
+                                "cleaned up. For more "
+                                "information, check logs/gcs_server.err and "
+                                "logs/gcs_server.out";
           }
         });
       },
@@ -518,8 +520,8 @@ void GcsServer::InitRuntimeEnvManager() {
           int protocol_len = protocol_end_pos - protocol_pos;
           auto protocol = plugin_uri.substr(protocol_pos, protocol_len);
           if (protocol != "gcs") {
-            // Some URIs do not correspond to files in the GCS.  Skip deletion for
-            // these.
+            // Some URIs do not correspond to files in the GCS.  Skip deletion
+            // for these.
             callback(true);
           } else {
             auto uri = plugin_uri.substr(protocol_pos);
@@ -545,8 +547,8 @@ void GcsServer::InitGcsWorkerManager() {
 void GcsServer::InstallEventListeners() {
   // Install node event listeners.
   gcs_node_manager_->AddNodeAddedListener([this](std::shared_ptr<rpc::GcsNodeInfo> node) {
-    // Because a new node has been added, we need to try to schedule the pending
-    // placement groups and the pending actors.
+    // Because a new node has been added, we need to try to schedule the
+    // pending placement groups and the pending actors.
     gcs_resource_manager_->OnNodeAdd(*node);
     gcs_placement_group_manager_->OnNodeAdd(NodeID::FromBinary(node->node_id()));
     gcs_actor_manager_->SchedulePendingActors();
@@ -557,8 +559,8 @@ void GcsServer::InstallEventListeners() {
       [this](std::shared_ptr<rpc::GcsNodeInfo> node) {
         auto node_id = NodeID::FromBinary(node->node_id());
         const auto node_ip_address = node->node_manager_address();
-        // All of the related placement groups and actors should be reconstructed when a
-        // node is removed from the GCS.
+        // All of the related placement groups and actors should be
+        // reconstructed when a node is removed from the GCS.
         gcs_resource_manager_->OnNodeDead(node_id);
         gcs_placement_group_manager_->OnNodeDead(node_id);
         gcs_actor_manager_->OnNodeDead(node_id, node_ip_address);
@@ -595,8 +597,8 @@ void GcsServer::InstallEventListeners() {
     gcs_resource_manager_->AddResourcesChangedListener([this] {
       main_service_.post(
           [this] {
-            // Because resources have been changed, we need to try to schedule the
-            // pending actors.
+            // Because resources have been changed, we need to try to schedule
+            // the pending actors.
             gcs_actor_manager_->SchedulePendingActors();
           },
           "GcsServer.SchedulePendingActors");
