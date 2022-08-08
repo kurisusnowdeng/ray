@@ -51,17 +51,18 @@ namespace raylet {
 /// 6. If a task has been waiting for arguments for too long, it will also be
 ///    spilled back to a different node.
 ///
-/// TODO(scv119): ideally, the local scheduler shouldn't be responsible for spilling,
-/// as it should return the request to the distributed scheduler if
-/// resource accusition failed, or a task has arguments pending resolution for too long
-/// time.
+/// TODO(scv119): ideally, the local scheduler shouldn't be responsible for
+/// spilling, as it should return the request to the distributed scheduler if
+/// resource accusition failed, or a task has arguments pending resolution for
+/// too long time.
 class LocalTaskManager : public ILocalTaskManager {
  public:
   /// \param self_node_id: ID of local node.
   /// \param cluster_resource_scheduler: The resource scheduler which contains
   ///                                    the state of the cluster.
   /// \param task_dependency_manager_ Used to fetch task's dependencies.
-  /// \param is_owner_alive: A callback which returns if the owner process is alive
+  /// \param is_owner_alive: A callback which returns if the owner process is
+  /// alive
   ///                        (according to our ownership model).
   /// \param get_node_info: Function that returns the node info for a node.
   /// \param worker_pool: A reference to the worker pool.
@@ -69,11 +70,13 @@ class LocalTaskManager : public ILocalTaskManager {
   /// \param get_task_arguments: A callback for getting a tasks' arguments by
   ///                            their ids.
   /// \param max_pinned_task_arguments_bytes: The cap on pinned arguments.
-  /// \param get_time_ms: A callback which returns the current time in milliseconds.
-  /// \param sched_cls_cap_interval_ms: The time before we increase the cap
+  /// \param get_time_ms: A callback which returns the current time in
+  /// milliseconds. \param sched_cls_cap_interval_ms: The time before we
+  /// increase the cap
   ///                                   on the number of tasks that can run per
-  ///                                   scheduling class. If set to 0, there is no
-  ///                                   cap. If it's a large number, the cap is hard.
+  ///                                   scheduling class. If set to 0, there is
+  ///                                   no cap. If it's a large number, the cap
+  ///                                   is hard.
   LocalTaskManager(
       const NodeID &self_node_id,
       std::shared_ptr<ClusterResourceScheduler> cluster_resource_scheduler,
@@ -104,8 +107,8 @@ class LocalTaskManager : public ILocalTaskManager {
   void TasksUnblocked(const std::vector<TaskID> &ready_ids);
 
   /// Return the finished task and release the worker resources.
-  /// This method will be removed and can be replaced by `ReleaseWorkerResources` directly
-  /// once we remove the legacy scheduler.
+  /// This method will be removed and can be replaced by
+  /// `ReleaseWorkerResources` directly once we remove the legacy scheduler.
   ///
   /// \param worker: The worker which was running the task.
   /// \param task: Output parameter.
@@ -127,8 +130,8 @@ class LocalTaskManager : public ILocalTaskManager {
   ///
   /// \param[out] example: An example task that is deadlocking.
   /// \param[in,out] any_pending: True if there's any pending example.
-  /// \param[in,out] num_pending_actor_creation: Number of pending actor creation tasks.
-  /// \param[in,out] num_pending_tasks: Number of pending tasks.
+  /// \param[in,out] num_pending_actor_creation: Number of pending actor
+  /// creation tasks. \param[in,out] num_pending_tasks: Number of pending tasks.
   /// \return True if any progress is any tasks are pending.
   bool AnyPendingTasksForResourceAcquisition(RayTask *example,
                                              bool *any_pending,
@@ -140,26 +143,25 @@ class LocalTaskManager : public ILocalTaskManager {
   /// \param worker: The worker which was running the task.
   void ReleaseWorkerResources(std::shared_ptr<WorkerInterface> worker);
 
-  /// When a task is blocked in ray.get or ray.wait, the worker who is executing the task
-  /// should give up the CPU resources allocated for the running task for the time being
-  /// and the worker itself should also be marked as blocked.
+  /// When a task is blocked in ray.get or ray.wait, the worker who is executing
+  /// the task should give up the CPU resources allocated for the running task
+  /// for the time being and the worker itself should also be marked as blocked.
   ///
   /// \param worker: The worker who will give up the CPU resources.
-  /// \return true if the cpu resources of the specified worker are released successfully,
-  /// else false.
+  /// \return true if the cpu resources of the specified worker are released
+  /// successfully, else false.
   bool ReleaseCpuResourcesFromUnblockedWorker(std::shared_ptr<WorkerInterface> worker);
 
-  /// When a task is no longer blocked in a ray.get or ray.wait, the CPU resources that
-  /// the worker gave up should be returned to it.
+  /// When a task is no longer blocked in a ray.get or ray.wait, the CPU
+  /// resources that the worker gave up should be returned to it.
   ///
   /// \param worker The blocked worker.
-  /// \return true if the cpu resources are returned back to the specified worker, else
-  /// false.
+  /// \return true if the cpu resources are returned back to the specified
+  /// worker, else false.
   bool ReturnCpuResourcesToBlockedWorker(std::shared_ptr<WorkerInterface> worker);
 
-  /// TODO(Chong-Li): Removing this and maintaining normal task resources by local
-  /// resource manager.
-  /// Calculate normal task resources.
+  /// TODO(Chong-Li): Removing this and maintaining normal task resources by
+  /// local resource manager. Calculate normal task resources.
   ResourceRequest CalcNormalTaskResources() const;
 
   void SetWorkerBacklog(SchedulingClass scheduling_class,
@@ -188,6 +190,27 @@ class LocalTaskManager : public ILocalTaskManager {
     return num_unschedulable_task_spilled_;
   }
 
+ protected:
+  /// Attempts to dispatch all tasks which are ready to run. A task
+  /// will be dispatched if it is on `tasks_to_dispatch_` and there are still
+  /// available resources on the node.
+  ///
+  /// If there are not enough resources locally, up to one task per resource
+  /// shape (the task at the head of the queue) will get spilled back to a
+  /// different node.
+  void DispatchScheduledTasksToWorkers();
+
+  /// Helper method when the current node does not have the available resources
+  /// to run a task.
+  ///
+  /// \returns true if the task was spilled. The task may not be spilled if the
+  /// spillback policy specifies the local node (which may happen if no other
+  /// nodes have the requested resources available).
+  virtual bool TrySpillback(const std::shared_ptr<internal::Work> &work,
+                            bool &is_infeasible);
+
+  void Spillback(const NodeID &spillback_to, const std::shared_ptr<internal::Work> &work);
+
  private:
   struct SchedulingClassInfo;
 
@@ -203,23 +226,6 @@ class LocalTaskManager : public ILocalTaskManager {
                            const rpc::Address &owner_address,
                            const std::string &runtime_env_setup_error_message);
 
-  /// Attempts to dispatch all tasks which are ready to run. A task
-  /// will be dispatched if it is on `tasks_to_dispatch_` and there are still
-  /// available resources on the node.
-  ///
-  /// If there are not enough resources locally, up to one task per resource
-  /// shape (the task at the head of the queue) will get spilled back to a
-  /// different node.
-  void DispatchScheduledTasksToWorkers();
-
-  /// Helper method when the current node does not have the available resources to run a
-  /// task.
-  ///
-  /// \returns true if the task was spilled. The task may not be spilled if the
-  /// spillback policy specifies the local node (which may happen if no other nodes have
-  /// the requested resources available).
-  bool TrySpillback(const std::shared_ptr<internal::Work> &work, bool &is_infeasible);
-
   // Try to spill waiting tasks to a remote node, starting from the end of the
   // queue.
   void SpillWaitingTasks();
@@ -233,9 +239,10 @@ class LocalTaskManager : public ILocalTaskManager {
   uint64_t MaxRunningTasksPerSchedulingClass(SchedulingClass sched_cls_id) const;
 
   /// Recompute the debug stats.
-  /// It is needed because updating the debug state is expensive for cluster_task_manager.
-  /// TODO(sang): Update the internal states value dynamically instead of iterating the
-  /// data structure.
+  /// It is needed because updating the debug state is expensive for
+  /// cluster_task_manager.
+  /// TODO(sang): Update the internal states value dynamically instead of
+  /// iterating the data structure.
   void RecomputeDebugStats() const;
 
   /// Determine whether a task should be immediately dispatched,
@@ -251,8 +258,6 @@ class LocalTaskManager : public ILocalTaskManager {
       const RayTask &task,
       rpc::RequestWorkerLeaseReply *reply,
       std::function<void(void)> send_reply_callback);
-
-  void Spillback(const NodeID &spillback_to, const std::shared_ptr<internal::Work> &work);
 
   /// Sum up the backlog size across all workers for a given scheduling class.
   int64_t TotalBacklogSize(SchedulingClass scheduling_class);
@@ -293,7 +298,8 @@ class LocalTaskManager : public ILocalTaskManager {
     absl::flat_hash_set<TaskID> running_tasks;
     /// The total number of tasks that can run from this scheduling class.
     const uint64_t capacity;
-    /// The next time that a new task of this scheduling class may be dispatched.
+    /// The next time that a new task of this scheduling class may be
+    /// dispatched.
     int64_t next_update_time;
   };
 
@@ -374,7 +380,8 @@ class LocalTaskManager : public ILocalTaskManager {
   /// Whether or not to enable the worker process cap.
   const bool sched_cls_cap_enabled_;
 
-  /// The initial interval before the cap on the number of worker processes is increased.
+  /// The initial interval before the cap on the number of worker processes is
+  /// increased.
   const int64_t sched_cls_cap_interval_ms_;
 
   const int64_t sched_cls_cap_max_ms_;

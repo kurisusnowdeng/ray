@@ -182,7 +182,8 @@ void LocalTaskManager::DispatchScheduledTasksToWorkers() {
                          << "). Waiting to dispatch task until other tasks complete";
           RAY_CHECK(!executing_task_args_.empty() && !pinned_task_arguments_.empty())
               << "Cannot dispatch task " << task_id
-              << " until another task finishes and releases its arguments, but no other "
+              << " until another task finishes and releases its arguments, but "
+                 "no other "
                  "task is running";
           work->SetStateWaiting(
               internal::UnscheduledWorkCause::WAITING_FOR_AVAILABLE_PLASMA_MEMORY);
@@ -207,8 +208,8 @@ void LocalTaskManager::DispatchScheduledTasksToWorkers() {
         continue;
       }
 
-      // Check if the node is still schedulable. It may not be if dependency resolution
-      // took a long time.
+      // Check if the node is still schedulable. It may not be if dependency
+      // resolution took a long time.
       auto allocated_instances = std::make_shared<TaskResourceInstances>();
       bool schedulable =
           cluster_resource_scheduler_->GetLocalResourceManager()
@@ -217,13 +218,13 @@ void LocalTaskManager::DispatchScheduledTasksToWorkers() {
 
       if (!schedulable) {
         ReleaseTaskArgs(task_id);
-        // The local node currently does not have the resources to run the task, so we
-        // should try spilling to another node.
+        // The local node currently does not have the resources to run the task,
+        // so we should try spilling to another node.
         bool did_spill = TrySpillback(work, is_infeasible);
         if (!did_spill) {
-          // There must not be any other available nodes in the cluster, so the task
-          // should stay on this node. We can skip the rest of the shape because the
-          // scheduler will make the same decision.
+          // There must not be any other available nodes in the cluster, so the
+          // task should stay on this node. We can skip the rest of the shape
+          // because the scheduler will make the same decision.
           work->SetStateWaiting(
               internal::UnscheduledWorkCause::WAITING_FOR_RESOURCES_AVAILABLE);
           break;
@@ -241,8 +242,8 @@ void LocalTaskManager::DispatchScheduledTasksToWorkers() {
         // passed.
         sched_cls_info.next_update_time = std::numeric_limits<int64_t>::max();
         sched_cls_info.running_tasks.insert(spec.TaskId());
-        // The local node has the available resources to run the task, so we should run
-        // it.
+        // The local node has the available resources to run the task, so we
+        // should run it.
         std::string allocated_instances_serialized_json = "{}";
         if (RayConfig::instance().worker_resource_limits_enabled()) {
           allocated_instances_serialized_json = allocated_instances->SerializeAsJson();
@@ -251,7 +252,8 @@ void LocalTaskManager::DispatchScheduledTasksToWorkers() {
         work->SetStateWaitingForWorker();
         bool is_detached_actor = spec.IsDetachedActor();
         auto &owner_address = spec.CallerAddress();
-        /// TODO(scv119): if a worker is not started, the resources is leaked and
+        /// TODO(scv119): if a worker is not started, the resources is leaked
+        /// and
         // task might be hanging.
         worker_pool_.PopWorker(
             spec,
@@ -611,7 +613,8 @@ void LocalTaskManager::TaskFinished(std::shared_ptr<WorkerInterface> worker,
   }
 }
 
-// TODO(scv119): task args related logic probaly belongs task dependency manager.
+// TODO(scv119): task args related logic probaly belongs task dependency
+// manager.
 bool LocalTaskManager::PinTaskArgsIfMemoryAvailable(const TaskSpecification &spec,
                                                     bool *args_missing) {
   std::vector<std::unique_ptr<RayObject>> args;
@@ -628,11 +631,12 @@ bool LocalTaskManager::PinTaskArgsIfMemoryAvailable(const TaskSpecification &spe
         // This can happen if the task's arguments were all local at some
         // point, but then at least one was evicted before the task could
         // be dispatched to a worker.
-        RAY_LOG(DEBUG)
-            << "RayTask " << spec.TaskId() << " argument " << deps[i]
-            << " was evicted before the task could be dispatched. This can happen "
-               "when there are many objects needed on this node. The task will be "
-               "scheduled once all of its dependencies are local.";
+        RAY_LOG(DEBUG) << "RayTask " << spec.TaskId() << " argument " << deps[i]
+                       << " was evicted before the task could be dispatched. "
+                          "This can happen "
+                          "when there are many objects needed on this node. "
+                          "The task will be "
+                          "scheduled once all of its dependencies are local.";
         *args_missing = true;
         return false;
       }
@@ -653,11 +657,11 @@ bool LocalTaskManager::PinTaskArgsIfMemoryAvailable(const TaskSpecification &spe
   }
 
   if (task_arg_bytes > max_pinned_task_arguments_bytes_) {
-    RAY_LOG(WARNING)
-        << "Dispatched task " << spec.TaskId() << " has arguments of size "
-        << task_arg_bytes
-        << ", but the max memory allowed for arguments of executing tasks is only "
-        << max_pinned_task_arguments_bytes_;
+    RAY_LOG(WARNING) << "Dispatched task " << spec.TaskId() << " has arguments of size "
+                     << task_arg_bytes
+                     << ", but the max memory allowed for arguments of "
+                        "executing tasks is only "
+                     << max_pinned_task_arguments_bytes_;
   } else if (pinned_task_arguments_bytes_ > max_pinned_task_arguments_bytes_) {
     ReleaseTaskArgs(spec.TaskId());
     RAY_LOG(DEBUG) << "Cannot dispatch task " << spec.TaskId()
@@ -783,23 +787,23 @@ bool LocalTaskManager::AnyPendingTasksForResourceAcquisition(
     bool *any_pending,
     int *num_pending_actor_creation,
     int *num_pending_tasks) const {
-  // We are guaranteed that these tasks are blocked waiting for resources after a
-  // call to ScheduleAndDispatchTasks(). They may be waiting for workers as well, but
-  // this should be a transient condition only.
+  // We are guaranteed that these tasks are blocked waiting for resources after
+  // a call to ScheduleAndDispatchTasks(). They may be waiting for workers as
+  // well, but this should be a transient condition only.
   for (const auto &shapes_it : tasks_to_dispatch_) {
     auto &work_queue = shapes_it.second;
     for (const auto &work_it : work_queue) {
       const auto &work = *work_it;
       const auto &task = work_it->task;
 
-      // If the work is not in the waiting state, it will be scheduled soon or won't be
-      // scheduled. Consider as non-pending.
+      // If the work is not in the waiting state, it will be scheduled soon or
+      // won't be scheduled. Consider as non-pending.
       if (work.GetState() != internal::WorkStatus::WAITING) {
         continue;
       }
 
-      // If the work is not waiting for acquiring resources, we don't consider it as
-      // there's resource deadlock.
+      // If the work is not waiting for acquiring resources, we don't consider
+      // it as there's resource deadlock.
       if (work.GetUnscheduledCause() !=
               internal::UnscheduledWorkCause::WAITING_FOR_RESOURCE_ACQUISITION &&
           work.GetUnscheduledCause() !=
@@ -927,8 +931,8 @@ void LocalTaskManager::ReleaseWorkerResources(std::shared_ptr<WorkerInterface> w
   auto allocated_instances = worker->GetAllocatedInstances();
   if (allocated_instances != nullptr) {
     if (worker->IsBlocked()) {
-      // If the worker is blocked, its CPU instances have already been released. We clear
-      // the CPU instances to avoid double freeing.
+      // If the worker is blocked, its CPU instances have already been released.
+      // We clear the CPU instances to avoid double freeing.
       allocated_instances->Remove(ResourceID::CPU());
     }
     cluster_resource_scheduler_->GetLocalResourceManager().ReleaseWorkerResources(
@@ -940,8 +944,8 @@ void LocalTaskManager::ReleaseWorkerResources(std::shared_ptr<WorkerInterface> w
   auto lifetime_allocated_instances = worker->GetLifetimeAllocatedInstances();
   if (lifetime_allocated_instances != nullptr) {
     if (worker->IsBlocked()) {
-      // If the worker is blocked, its CPU instances have already been released. We clear
-      // the CPU instances to avoid double freeing.
+      // If the worker is blocked, its CPU instances have already been released.
+      // We clear the CPU instances to avoid double freeing.
       lifetime_allocated_instances->Remove(ResourceID::CPU());
     }
     cluster_resource_scheduler_->GetLocalResourceManager().ReleaseWorkerResources(
@@ -981,11 +985,14 @@ bool LocalTaskManager::ReturnCpuResourcesToBlockedWorker(
   if (worker->GetAllocatedInstances() != nullptr) {
     if (worker->GetAllocatedInstances()->Has(ResourceID::CPU())) {
       auto cpu_instances = worker->GetAllocatedInstances()->GetDouble(ResourceID::CPU());
-      // Important: we allow going negative here, since otherwise you can use infinite
-      // CPU resources by repeatedly blocking / unblocking a task. By allowing it to go
-      // negative, at most one task can "borrow" this worker's resources.
+      // Important: we allow going negative here, since otherwise you can use
+      // infinite CPU resources by repeatedly blocking / unblocking a task. By
+      // allowing it to go negative, at most one task can "borrow" this worker's
+      // resources.
       cluster_resource_scheduler_->GetLocalResourceManager().SubtractResourceInstances(
-          ResourceID::CPU(), cpu_instances, /*allow_going_negative=*/true);
+          ResourceID::CPU(),
+          cpu_instances,
+          /*allow_going_negative=*/true);
       worker->MarkUnblocked();
       return true;
     }

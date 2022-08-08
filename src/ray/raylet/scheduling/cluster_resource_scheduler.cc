@@ -121,8 +121,8 @@ scheduling::NodeID ClusterResourceScheduler::GetBestSchedulableNode(
     bool force_spillback,
     int64_t *total_violations,
     bool *is_infeasible) {
-  // The zero cpu actor is a special case that must be handled the same way by all
-  // scheduling policies, except for node affnity scheduling policy.
+  // The zero cpu actor is a special case that must be handled the same way by
+  // all scheduling policies, except for node affnity scheduling policy.
   if (actor_creation && resource_request.IsEmpty() &&
       !IsNodeAffinitySchedulingStrategy(scheduling_strategy)) {
     return scheduling_policy_->Schedule(resource_request, SchedulingOptions::Random());
@@ -147,8 +147,8 @@ scheduling::NodeID ClusterResourceScheduler::GetBestSchedulableNode(
             scheduling_strategy.node_affinity_scheduling_strategy().node_id(),
             scheduling_strategy.node_affinity_scheduling_strategy().soft()));
   } else {
-    // TODO (Alex): Setting require_available == force_spillback is a hack in order to
-    // remain bug compatible with the legacy scheduling algorithms.
+    // TODO (Alex): Setting require_available == force_spillback is a hack in
+    // order to remain bug compatible with the legacy scheduling algorithms.
     best_node_id =
         scheduling_policy_->Schedule(resource_request,
                                      SchedulingOptions::Hybrid(
@@ -191,7 +191,7 @@ scheduling::NodeID ClusterResourceScheduler::GetBestSchedulableNode(
 
 bool ClusterResourceScheduler::SubtractRemoteNodeAvailableResources(
     scheduling::NodeID node_id, const ResourceRequest &resource_request) {
-  RAY_CHECK(node_id != local_node_id_);
+  // RAY_CHECK(node_id != local_node_id_);
 
   // Just double check this node can still schedule the resource request.
   if (!IsSchedulable(resource_request, node_id)) {
@@ -214,7 +214,7 @@ bool ClusterResourceScheduler::AllocateRemoteTaskResources(
     const absl::flat_hash_map<std::string, double> &task_resources) {
   ResourceRequest resource_request = ResourceMapToResourceRequest(
       task_resources, /*requires_object_store_memory=*/false);
-  RAY_CHECK(node_id != local_node_id_);
+  // RAY_CHECK(node_id != local_node_id_);
   return SubtractRemoteNodeAvailableResources(node_id, resource_request);
 }
 
@@ -243,7 +243,8 @@ scheduling::NodeID ClusterResourceScheduler::GetBestSchedulableNode(
     return local_node_id_;
   }
 
-  // This argument is used to set violation, which is an unsupported feature now.
+  // This argument is used to set violation, which is an unsupported feature
+  // now.
   int64_t _unused;
   scheduling::NodeID best_node =
       GetBestSchedulableNode(task_spec.GetRequiredPlacementResources().GetResourceMap(),

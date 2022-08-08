@@ -48,8 +48,8 @@ class ClusterResourceScheduler {
   /// Constructor initializing the resources associated with the local node.
   ///
   /// \param local_node_id: ID of local node,
-  /// \param local_node_resources: The total and the available resources associated
-  /// with the local node.
+  /// \param local_node_resources: The total and the available resources
+  /// associated with the local node.
   ClusterResourceScheduler(scheduling::NodeID local_node_id,
                            const NodeResources &local_node_resources,
                            std::function<bool(scheduling::NodeID)> is_node_available_fn);
@@ -63,44 +63,46 @@ class ClusterResourceScheduler {
 
   /// Schedule the specified resources to the cluster nodes.
   ///
-  /// \param resource_request_list The resource request list we're attempting to schedule.
-  /// \param options: scheduling options.
-  /// \param context: The context of current scheduling. Each policy can
-  /// correspond to a different type of context.
-  /// \return `SchedulingResult`, including the
-  /// selected nodes if schedule successful, otherwise, it will return an empty vector and
-  /// a flag to indicate whether this request can be retry or not.
+  /// \param resource_request_list The resource request list we're attempting to
+  /// schedule. \param options: scheduling options. \param context: The context
+  /// of current scheduling. Each policy can correspond to a different type of
+  /// context. \return `SchedulingResult`, including the selected nodes if
+  /// schedule successful, otherwise, it will return an empty vector and a flag
+  /// to indicate whether this request can be retry or not.
   SchedulingResult Schedule(
       const std::vector<const ResourceRequest *> &resource_request_list,
       SchedulingOptions options);
 
-  ///  Find a node in the cluster on which we can schedule a given resource request.
-  ///  In hybrid mode, see `scheduling_policy.h` for a description of the policy.
+  ///  Find a node in the cluster on which we can schedule a given resource
+  ///  request. In hybrid mode, see `scheduling_policy.h` for a description of
+  ///  the policy.
   ///
   ///  \param task_spec: Task/Actor to be scheduled.
-  ///  \param prioritize_local_node: true if we want to try out local node first.
-  ///  \param exclude_local_node: true if we want to avoid local node. This will cancel
-  ///  prioritize_local_node if set to true.
-  ///  \param requires_object_store_memory: take object store memory usage as part of
+  ///  \param prioritize_local_node: true if we want to try out local node
+  ///  first. \param exclude_local_node: true if we want to avoid local node.
+  ///  This will cancel prioritize_local_node if set to true. \param
+  ///  requires_object_store_memory: take object store memory usage as part of
   ///  scheduling decision.
-  ///  \param is_infeasible[out]: It is set true if the task is not schedulable because it
-  ///  is infeasible.
+  ///  \param is_infeasible[out]: It is set true if the task is not schedulable
+  ///  because it is infeasible.
   ///
-  ///  \return emptry string, if no node can schedule the current request; otherwise,
-  ///          return the string name of a node that can schedule the resource request.
-  scheduling::NodeID GetBestSchedulableNode(const TaskSpecification &task_spec,
-                                            bool prioritize_local_node,
-                                            bool exclude_local_node,
-                                            bool requires_object_store_memory,
-                                            bool *is_infeasible);
+  ///  \return emptry string, if no node can schedule the current request;
+  ///  otherwise,
+  ///          return the string name of a node that can schedule the resource
+  ///          request.
+  virtual scheduling::NodeID GetBestSchedulableNode(const TaskSpecification &task_spec,
+                                                    bool prioritize_local_node,
+                                                    bool exclude_local_node,
+                                                    bool requires_object_store_memory,
+                                                    bool *is_infeasible);
 
-  /// Subtract the resources required by a given resource request (resource_request) from
-  /// a given remote node.
+  /// Subtract the resources required by a given resource request
+  /// (resource_request) from a given remote node.
   ///
   /// \param node_id Remote node whose resources we allocate.
   /// \param resource_request Task for which we allocate resources.
-  /// \return True if remote node has enough resources to satisfy the resource request.
-  /// False otherwise.
+  /// \return True if remote node has enough resources to satisfy the resource
+  /// request. False otherwise.
   bool AllocateRemoteTaskResources(
       scheduling::NodeID node_id,
       const absl::flat_hash_map<std::string, double> &resource_request);
@@ -121,6 +123,10 @@ class ClusterResourceScheduler {
   ClusterResourceManager &GetClusterResourceManager() {
     return *cluster_resource_manager_;
   }
+
+ protected:
+  /// Identifier of local node.
+  scheduling::NodeID local_node_id_;
 
  private:
   void Init(const NodeResources &local_node_resources,
@@ -149,8 +155,9 @@ class ClusterResourceScheduler {
   bool IsSchedulable(const ResourceRequest &resource_request,
                      scheduling::NodeID node_id) const;
 
-  ///  Find a node in the cluster on which we can schedule a given resource request.
-  ///  In hybrid mode, see `scheduling_policy.h` for a description of the policy.
+  ///  Find a node in the cluster on which we can schedule a given resource
+  ///  request. In hybrid mode, see `scheduling_policy.h` for a description of
+  ///  the policy.
   ///
   ///  \param resource_request: Task to be scheduled.
   ///  \param scheduling_strategy: Strategy about how to schedule this task.
@@ -159,8 +166,8 @@ class ClusterResourceScheduler {
   ///  \param violations: The number of soft constraint violations associated
   ///                     with the node returned by this function (assuming
   ///                     a node that can schedule resource_request is found).
-  ///  \param is_infeasible[in]: It is set true if the task is not schedulable because it
-  ///  is infeasible.
+  ///  \param is_infeasible[in]: It is set true if the task is not schedulable
+  ///  because it is infeasible.
   ///
   ///  \return -1, if no node can schedule the current request; otherwise,
   ///          return the ID of a node that can schedule the resource request.
@@ -187,8 +194,6 @@ class ClusterResourceScheduler {
       int64_t *violations,
       bool *is_infeasible);
 
-  /// Identifier of local node.
-  scheduling::NodeID local_node_id_;
   /// Callback to check if node is available.
   std::function<bool(scheduling::NodeID)> is_node_available_fn_;
   /// Resources of local node.

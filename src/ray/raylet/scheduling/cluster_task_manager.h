@@ -47,7 +47,8 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
   /// \param announce_infeasible_task: Callback that informs the user if a task
   ///                                  is infeasible.
   /// \param local_task_manager: Manages local tasks.
-  /// \param get_time_ms: A callback which returns the current time in milliseconds.
+  /// \param get_time_ms: A callback which returns the current time in
+  /// milliseconds.
   ClusterTaskManager(
       const NodeID &self_node_id,
       std::shared_ptr<ClusterResourceScheduler> cluster_resource_scheduler,
@@ -58,14 +59,16 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
         return (int64_t)(absl::GetCurrentTimeNanos() / 1e6);
       });
 
-  /// Queue task and schedule. This hanppens when processing the worker lease request.
+  /// Queue task and schedule. This hanppens when processing the worker lease
+  /// request.
   ///
   /// \param task: The incoming task to be queued and scheduled.
-  /// \param grant_or_reject: True if we we should either grant or reject the request
+  /// \param grant_or_reject: True if we we should either grant or reject the
+  /// request
   ///                         but no spillback.
-  /// \param is_selected_based_on_locality : should schedule on local node if possible.
-  /// \param reply: The reply of the lease request.
-  /// \param send_reply_callback: The function used during dispatching.
+  /// \param is_selected_based_on_locality : should schedule on local node if
+  /// possible. \param reply: The reply of the lease request. \param
+  /// send_reply_callback: The function used during dispatching.
   void QueueAndScheduleTask(const RayTask &task,
                             bool grant_or_reject,
                             bool is_selected_based_on_locality,
@@ -86,18 +89,19 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
 
   /// Populate the list of pending or infeasible actor tasks for node stats.
   ///
-  /// \param[out] reply: Output parameter. `infeasible_tasks` is the only field filled.
+  /// \param[out] reply: Output parameter. `infeasible_tasks` is the only field
+  /// filled.
   void FillPendingActorInfo(rpc::GetNodeStatsReply *reply) const override;
 
   /// Populate the relevant parts of the heartbeat table. This is intended for
-  /// sending resource usage of raylet to gcs. In particular, this should fill in
-  /// resource_load and resource_load_by_shape.
+  /// sending resource usage of raylet to gcs. In particular, this should fill
+  /// in resource_load and resource_load_by_shape.
   ///
-  /// \param[out] data: Output parameter. `resource_load` and `resource_load_by_shape` are
-  /// the only
+  /// \param[out] data: Output parameter. `resource_load` and
+  /// `resource_load_by_shape` are the only
   ///                   fields used.
-  /// \param[in] last_reported_resources: The last reported resources. Used to check
-  /// whether
+  /// \param[in] last_reported_resources: The last reported resources. Used to
+  /// check whether
   ///                                     resources have been changed.
   void FillResourceUsage(
       rpc::ResourcesData &data,
@@ -107,8 +111,8 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
   ///
   /// \param[out] example: An example task that is deadlocking.
   /// \param[in,out] any_pending: True if there's any pending example.
-  /// \param[in,out] num_pending_actor_creation: Number of pending actor creation tasks.
-  /// \param[in,out] num_pending_tasks: Number of pending tasks.
+  /// \param[in,out] num_pending_actor_creation: Number of pending actor
+  /// creation tasks. \param[in,out] num_pending_tasks: Number of pending tasks.
   /// \return True if any progress is any tasks are pending.
   bool AnyPendingTasksForResourceAcquisition(RayTask *example,
                                              bool *any_pending,
@@ -124,20 +128,24 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
   /// The helper to dump the debug state of the cluster task manater.
   std::string DebugStr() const override;
 
- private:
+ protected:
   void TryScheduleInfeasibleTask();
 
   // Schedule the task onto a node (which could be either remote or local).
   void ScheduleOnNode(const NodeID &node_to_schedule,
                       const std::shared_ptr<internal::Work> &work);
 
+ private:
   /// Recompute the debug stats.
-  /// It is needed because updating the debug state is expensive for cluster_task_manager.
-  /// TODO(sang): Update the internal states value dynamically instead of iterating the
-  /// data structure.
+  /// It is needed because updating the debug state is expensive for
+  /// cluster_task_manager.
+  /// TODO(sang): Update the internal states value dynamically instead of
+  /// iterating the data structure.
   void RecomputeDebugStats() const;
 
   const NodeID &self_node_id_;
+
+ protected:
   /// Responsible for resource tracking/view of the cluster.
   std::shared_ptr<ClusterResourceScheduler> cluster_resource_scheduler_;
 
@@ -150,8 +158,8 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
 
   /// TODO(swang): Add index from TaskID -> Work to avoid having to iterate
   /// through queues to cancel tasks, etc.
-  /// Queue of lease requests that are waiting for resources to become available.
-  /// Tasks move from scheduled -> dispatch | waiting.
+  /// Queue of lease requests that are waiting for resources to become
+  /// available. Tasks move from scheduled -> dispatch | waiting.
   absl::flat_hash_map<SchedulingClass, std::deque<std::shared_ptr<internal::Work>>>
       tasks_to_schedule_;
 
@@ -160,6 +168,7 @@ class ClusterTaskManager : public ClusterTaskManagerInterface {
   absl::flat_hash_map<SchedulingClass, std::deque<std::shared_ptr<internal::Work>>>
       infeasible_tasks_;
 
+ private:
   const SchedulerResourceReporter scheduler_resource_reporter_;
   mutable SchedulerStats internal_stats_;
 

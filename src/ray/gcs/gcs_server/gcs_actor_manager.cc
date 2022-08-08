@@ -1303,6 +1303,11 @@ const absl::flat_hash_map<ActorID, std::shared_ptr<GcsActor>>
   return registered_actors_;
 }
 
+const std::vector<std::shared_ptr<GcsActor>>
+    &GcsActorManager::GetPendingActors() const {
+  return pending_actors_;
+}
+
 const absl::flat_hash_map<ActorID, std::vector<RegisterActorCallback>>
     &GcsActorManager::GetActorRegisterCallbacks() const {
   return actor_to_register_callbacks_;

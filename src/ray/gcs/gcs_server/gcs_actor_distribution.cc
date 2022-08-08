@@ -94,16 +94,16 @@ GcsBasedActorScheduler::AllocateActorWorkerAssignment(
 scheduling::NodeID GcsBasedActorScheduler::AllocateResources(
     const ResourceRequest &required_placement_resources,
     const ResourceRequest &required_resources) {
-  // TODO(Shanly): Use BundleSpread scheduling policy for the timebeing, it should be
-  // replaced with Spread policy once the shceduling interfaces are unified inside
-  // `ISchedulingPolicy`.
+  // TODO(Shanly): Use BundleSpread scheduling policy for the timebeing, it
+  // should be replaced with Spread policy once the shceduling interfaces are
+  // unified inside `ISchedulingPolicy`.
   auto scheduling_options = SchedulingOptions::BundleSpread();
   auto scheduling_result =
       cluster_resource_scheduler_->Schedule({&required_resources}, scheduling_options);
 
   if (!scheduling_result.status.IsSuccess()) {
-    RAY_LOG(INFO)
-        << "Scheduling resources failed, schedule type = SchedulingType::SPREAD";
+    RAY_LOG(INFO) << "Scheduling resources failed, schedule type = "
+                     "SchedulingType::SPREAD";
     return scheduling::NodeID::Nil();
   }
 
@@ -176,32 +176,33 @@ void GcsBasedActorScheduler::HandleWorkerLeaseReply(
     const Status &status,
     const rpc::RequestWorkerLeaseReply &reply) {
   auto node_id = NodeID::FromBinary(node->node_id());
-  // If the actor is still in the leasing map and the status is ok, remove the actor
-  // from the leasing map and handle the reply. Otherwise, lease again, because it
-  // may be a network exception.
-  // If the actor is not in the leasing map, it means that the actor has been
-  // cancelled as the node is dead, just do nothing in this case because the
-  // gcs_actor_manager will reconstruct it again.
+  // If the actor is still in the leasing map and the status is ok, remove the
+  // actor from the leasing map and handle the reply. Otherwise, lease again,
+  // because it may be a network exception. If the actor is not in the leasing
+  // map, it means that the actor has been cancelled as the node is dead, just
+  // do nothing in this case because the gcs_actor_manager will reconstruct it
+  // again.
   auto iter = node_to_actors_when_leasing_.find(node_id);
   if (iter != node_to_actors_when_leasing_.end()) {
     auto actor_iter = iter->second.find(actor->GetActorID());
     if (actor_iter == iter->second.end()) {
       // if actor is not in leasing state, it means it is cancelled.
-      RAY_LOG(INFO)
-          << "Raylet granted a lease request, but the outstanding lease "
-             "request for "
-          << actor->GetActorID()
-          << " has been already cancelled. The response will be ignored. Job id = "
-          << actor->GetActorID().JobId();
+      RAY_LOG(INFO) << "Raylet granted a lease request, but the outstanding lease "
+                       "request for "
+                    << actor->GetActorID()
+                    << " has been already cancelled. The response will be ignored. Job "
+                       "id = "
+                    << actor->GetActorID().JobId();
       return;
     }
 
     if (status.ok()) {
       if (reply.worker_address().raylet_id().empty() &&
           reply.retry_at_raylet_address().raylet_id().empty() && !reply.rejected()) {
-        // Actor creation task has been cancelled. It is triggered by `ray.kill`. If
-        // the number of remaining restarts of the actor is not equal to 0, GCS will
-        // reschedule the actor, so it return directly here.
+        // Actor creation task has been cancelled. It is triggered by
+        // `ray.kill`. If the number of remaining restarts of the actor is not
+        // equal to 0, GCS will reschedule the actor, so it return directly
+        // here.
         RAY_LOG(DEBUG) << "Actor " << actor->GetActorID()
                        << " creation task has been cancelled.";
         ResetActorWorkerAssignment(actor.get());

@@ -30,11 +30,8 @@
 #include "ray/raylet_client/raylet_client.h"
 #include "ray/raylet/local_object_manager.h"
 #include "ray/raylet/scheduling/scheduling_ids.h"
-#include "ray/raylet/scheduling/cluster_resource_scheduler.h"
-#include "ray/raylet/scheduling/cluster_task_manager.h"
 #include "ray/raylet/scheduling/cluster_task_manager_interface.h"
 #include "ray/raylet/dependency_manager.h"
-#include "ray/raylet/local_task_manager.h"
 #include "ray/raylet/wait_manager.h"
 #include "ray/raylet/worker_pool.h"
 #include "ray/rpc/worker/core_worker_client_pool.h"
@@ -43,6 +40,9 @@
 #include "ray/common/asio/instrumented_io_context.h"
 #include "ray/common/bundle_spec.h"
 #include "ray/raylet/placement_group_resource_manager.h"
+#include "ray/raylet/scheduling/cluster_resource_scheduler.h"
+#include "ray/raylet/scheduling/cluster_task_manager.h"
+#include "ray/raylet/local_task_manager.h"
 // clang-format on
 
 namespace ray {
@@ -140,6 +140,12 @@ class HeartbeatSender {
 
 class NodeManager : public rpc::NodeManagerServiceHandler {
  public:
+  NodeManager(instrumented_io_context &io_service,
+              const NodeID &self_node_id,
+              const NodeManagerConfig &config,
+              const ObjectManagerConfig &object_manager_config,
+              std::shared_ptr<gcs::GcsClient> gcs_client);
+
   /// Create a node manager.
   ///
   /// \param resource_config The initial set of node resources.
@@ -210,13 +216,11 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
 
   /// Query all of local core worker states.
   ///
-  /// \param on_replied A callback that's called when each of query RPC is replied.
-  /// \param send_reply_callback A reply callback that will be called when all
-  /// RPCs are replied.
-  /// \param include_memory_info If true, it requires every object ref information
-  /// from all workers.
-  /// \param include_task_info If true, it requires every task metadata information
-  /// from all workers.
+  /// \param on_replied A callback that's called when each of query RPC is
+  /// replied. \param send_reply_callback A reply callback that will be called
+  /// when all RPCs are replied. \param include_memory_info If true, it requires
+  /// every object ref information from all workers. \param include_task_info If
+  /// true, it requires every task metadata information from all workers.
   void QueryAllWorkerStates(
       const std::function<void(const ray::Status &status,
                                const rpc::GetCoreWorkerStatsReply &r)> &on_replied,
@@ -257,16 +261,16 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   void ResourceDeleted(const NodeID &node_id,
                        const std::vector<std::string> &resource_names);
 
-  /// Evaluates the local infeasible queue to check if any tasks can be scheduled.
-  /// This is called whenever there's an update to the resources on the local node.
-  /// \return Void.
+  /// Evaluates the local infeasible queue to check if any tasks can be
+  /// scheduled. This is called whenever there's an update to the resources on
+  /// the local node. \return Void.
   void TryLocalInfeasibleTaskScheduling();
 
   /// Fill out the normal task resource report.
   void FillNormalTaskResourceUsage(rpc::ResourcesData &resources_data);
 
-  /// Fill out the resource report. This can be called by either method to transport the
-  /// report to GCS.
+  /// Fill out the resource report. This can be called by either method to
+  /// transport the report to GCS.
   void FillResourceReport(rpc::ResourcesData &resources_data);
 
   /// Write out debug state to a file.
@@ -302,16 +306,16 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   /// \return Void.
   void FinishAssignedActorCreationTask(WorkerInterface &worker, const RayTask &task);
 
-  /// Handle blocking gets of objects. This could be a task assigned to a worker,
-  /// an out-of-band task (e.g., a thread created by the application), or a
-  /// driver task. This can be triggered when a client starts a get call or a
-  /// wait call.
+  /// Handle blocking gets of objects. This could be a task assigned to a
+  /// worker, an out-of-band task (e.g., a thread created by the application),
+  /// or a driver task. This can be triggered when a client starts a get call or
+  /// a wait call.
   ///
   /// \param client The client that is executing the blocked task.
-  /// \param required_object_refs The objects that the client is blocked waiting for.
-  /// \param current_task_id The task that is blocked.
-  /// \param ray_get Whether the task is blocked in a `ray.get` call.
-  /// \param mark_worker_blocked Whether to mark the worker as blocked. This
+  /// \param required_object_refs The objects that the client is blocked waiting
+  /// for. \param current_task_id The task that is blocked. \param ray_get
+  /// Whether the task is blocked in a `ray.get` call. \param
+  /// mark_worker_blocked Whether to mark the worker as blocked. This
   ///                            should be False for direct calls.
   /// \return Void.
   void AsyncResolveObjects(const std::shared_ptr<ClientConnection> &client,
@@ -474,19 +478,15 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   /// \return Void.
   void ProcessPushErrorRequestMessage(const uint8_t *message_data);
 
-  /// Process worker subscribing to a given plasma object become available. This handler
-  /// makes sure that the plasma object is local and calls core worker's PlasmaObjectReady
-  /// gRPC endpoint.
+  /// Process worker subscribing to a given plasma object become available. This
+  /// handler makes sure that the plasma object is local and calls core worker's
+  /// PlasmaObjectReady gRPC endpoint.
   ///
   /// \param client The client that sent the message.
   /// \param message_data A pointer to the message data.
   /// \return void.
   void ProcessSubscribePlasmaReady(const std::shared_ptr<ClientConnection> &client,
                                    const uint8_t *message_data);
-
-  void HandleUpdateResourceUsage(const rpc::UpdateResourceUsageRequest &request,
-                                 rpc::UpdateResourceUsageReply *reply,
-                                 rpc::SendReplyCallback send_reply_callback) override;
 
   /// Handle a `RequestResourceReport` request.
   void HandleRequestResourceReport(const rpc::RequestResourceReportRequest &request,
@@ -512,11 +512,6 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   void HandleCancelResourceReserve(const rpc::CancelResourceReserveRequest &request,
                                    rpc::CancelResourceReserveReply *reply,
                                    rpc::SendReplyCallback send_reply_callback) override;
-
-  /// Handle a `WorkerLease` request.
-  void HandleRequestWorkerLease(const rpc::RequestWorkerLeaseRequest &request,
-                                rpc::RequestWorkerLeaseReply *reply,
-                                rpc::SendReplyCallback send_reply_callback) override;
 
   /// Handle a `ReportWorkerBacklog` request.
   void HandleReportWorkerBacklog(const rpc::ReportWorkerBacklogRequest &request,
@@ -608,12 +603,43 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
 
   /// Return back all the bundle resource.
   ///
-  /// \param bundle_spec: Specification of bundle whose resources will be returned.
-  /// \return Whether the resource is returned successfully.
+  /// \param bundle_spec: Specification of bundle whose resources will be
+  /// returned. \return Whether the resource is returned successfully.
   bool ReturnBundleResources(const BundleSpecification &bundle_spec);
 
-  /// Publish the infeasible task error to GCS so that drivers can subscribe to it and
-  /// print.
+  /// Populate the relevant parts of the heartbeat table. This is intended for
+  /// sending raylet <-> gcs heartbeats. In particular, this should fill in
+  /// resource_load and resource_load_by_shape.
+  ///
+  /// \param Output parameter. `resource_load` and `resource_load_by_shape` are
+  /// the only fields used.
+  void FillResourceUsage(rpc::ResourcesData &data);
+
+  /// Disconnect a client.
+  ///
+  /// \param client The client that sent the message.
+  /// \param disconnect_type The reason to disconnect the specified client.
+  /// \param client_error_message Extra error messages about this disconnection
+  /// \return Void.
+  void DisconnectClient(
+      const std::shared_ptr<ClientConnection> &client,
+      rpc::WorkerExitType disconnect_type = rpc::WorkerExitType::SYSTEM_ERROR_EXIT,
+      const rpc::RayException *creation_task_exception = nullptr);
+
+ protected:
+  /// Handle a `WorkerLease` request.
+  virtual void HandleRequestWorkerLease(
+      const rpc::RequestWorkerLeaseRequest &request,
+      rpc::RequestWorkerLeaseReply *reply,
+      rpc::SendReplyCallback send_reply_callback) override;
+
+  virtual void HandleUpdateResourceUsage(
+      const rpc::UpdateResourceUsageRequest &request,
+      rpc::UpdateResourceUsageReply *reply,
+      rpc::SendReplyCallback send_reply_callback) override;
+
+  /// Publish the infeasible task error to GCS so that drivers can subscribe to
+  /// it and print.
   ///
   /// \param task RayTask that is infeasible
   void PublishInfeasibleTaskError(const RayTask &task) const;
@@ -627,25 +653,6 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   /// \return Whether the request was successful.
   bool GetObjectsFromPlasma(const std::vector<ObjectID> &object_ids,
                             std::vector<std::unique_ptr<RayObject>> *results);
-
-  /// Populate the relevant parts of the heartbeat table. This is intended for
-  /// sending raylet <-> gcs heartbeats. In particular, this should fill in
-  /// resource_load and resource_load_by_shape.
-  ///
-  /// \param Output parameter. `resource_load` and `resource_load_by_shape` are the only
-  /// fields used.
-  void FillResourceUsage(rpc::ResourcesData &data);
-
-  /// Disconnect a client.
-  ///
-  /// \param client The client that sent the message.
-  /// \param disconnect_type The reason to disconnect the specified client.
-  /// \param client_error_message Extra error messages about this disconnection
-  /// \return Void.
-  void DisconnectClient(
-      const std::shared_ptr<ClientConnection> &client,
-      rpc::WorkerExitType disconnect_type = rpc::WorkerExitType::SYSTEM_ERROR_EXIT,
-      const rpc::RayException *creation_task_exception = nullptr);
 
   /// ID of this node.
   NodeID self_node_id_;
@@ -679,11 +686,11 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   PeriodicalRunner periodical_runner_;
   /// The period used for the resources report timer.
   uint64_t report_resources_period_ms_;
-  /// The time that the last resource report was sent at. Used to make sure we are
-  /// keeping up with resource reports.
+  /// The time that the last resource report was sent at. Used to make sure we
+  /// are keeping up with resource reports.
   uint64_t last_resource_report_at_ms_;
-  /// Incremented each time we encounter a potential resource deadlock condition.
-  /// This is reset to zero when the condition is cleared.
+  /// Incremented each time we encounter a potential resource deadlock
+  /// condition. This is reset to zero when the condition is cleared.
   int resource_deadlock_warned_ = 0;
   /// Whether we have recorded any metrics yet.
   bool recorded_metrics_ = false;
@@ -726,12 +733,12 @@ class NodeManager : public rpc::NodeManagerServiceHandler {
   /// lease on.
   absl::flat_hash_map<WorkerID, std::vector<WorkerID>> leased_workers_by_owner_;
 
-  /// Whether to trigger global GC in the next resource usage report. This will broadcast
-  /// a global GC message to all raylets except for this one.
+  /// Whether to trigger global GC in the next resource usage report. This will
+  /// broadcast a global GC message to all raylets except for this one.
   bool should_global_gc_ = false;
 
-  /// Whether to trigger local GC in the next resource usage report. This will trigger gc
-  /// on all local workers of this raylet.
+  /// Whether to trigger local GC in the next resource usage report. This will
+  /// trigger gc on all local workers of this raylet.
   bool should_local_gc_ = false;
 
   /// When plasma storage usage is high, we'll run gc to reduce it.

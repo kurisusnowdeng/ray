@@ -82,7 +82,7 @@ class GcsResourceReportPoller {
   /// Event handler when a node leaves the cluster.
   void HandleNodeRemoved(const rpc::GcsNodeInfo &node_info) LOCKS_EXCLUDED(mutex_);
 
- private:
+ protected:
   // An asio service which does the polling work.
   instrumented_io_context polling_service_;
   // The associated thread it runs on.
@@ -144,12 +144,13 @@ class GcsResourceReportPoller {
   /// pulls. This method is thread safe.
   void TryPullResourceReport() LOCKS_EXCLUDED(mutex_);
   /// Pull resource report without validation.
-  void PullResourceReport(const std::shared_ptr<PullState> state);
+  virtual void PullResourceReport(const std::shared_ptr<PullState> state);
   /// A resource report was successfully pulled (and the resource manager was already
   /// updated). This method is thread safe.
   void NodeResourceReportReceived(const std::shared_ptr<PullState> state)
       LOCKS_EXCLUDED(mutex_);
 
+ private:
   friend class GcsResourceReportPollerTest;
 };
 
