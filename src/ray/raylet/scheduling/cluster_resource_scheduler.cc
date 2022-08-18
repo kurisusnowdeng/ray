@@ -191,7 +191,7 @@ scheduling::NodeID ClusterResourceScheduler::GetBestSchedulableNode(
 
 bool ClusterResourceScheduler::SubtractRemoteNodeAvailableResources(
     scheduling::NodeID node_id, const ResourceRequest &resource_request) {
-  RAY_CHECK(node_id != local_node_id_);
+  // RAY_CHECK(node_id != local_node_id_);
 
   // Just double check this node can still schedule the resource request.
   if (!IsSchedulable(resource_request, node_id)) {
@@ -214,7 +214,7 @@ bool ClusterResourceScheduler::AllocateRemoteTaskResources(
     const absl::flat_hash_map<std::string, double> &task_resources) {
   ResourceRequest resource_request = ResourceMapToResourceRequest(
       task_resources, /*requires_object_store_memory=*/false);
-  RAY_CHECK(node_id != local_node_id_);
+  // RAY_CHECK(node_id != local_node_id_);
   return SubtractRemoteNodeAvailableResources(node_id, resource_request);
 }
 
