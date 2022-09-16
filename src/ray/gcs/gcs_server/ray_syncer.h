@@ -50,7 +50,7 @@ class RaySyncer {
         std::make_unique<::ray::gcs::GrpcBasedResourceBroadcaster>(raylet_client_pool);
   }
 
-  void Start() {
+  virtual void Start() {
     poller_->Start();
     broadcast_thread_ = std::make_unique<std::thread>([this]() {
       SetThreadName("resource_bcast");
@@ -84,7 +84,7 @@ class RaySyncer {
         "RaySyncer.deadline_timer.report_resource_report");
   }
 
-  void Stop() {
+  virtual void Stop() {
     poller_->Stop();
     if (broadcast_thread_ != nullptr) {
       broadcast_service_.stop();
@@ -126,7 +126,7 @@ class RaySyncer {
     }
   }
 
-  void Initialize(const ::ray::gcs::GcsInitData &gcs_init_data) {
+  virtual void Initialize(const ::ray::gcs::GcsInitData &gcs_init_data) {
     poller_->Initialize(gcs_init_data);
     broadcaster_->Initialize(gcs_init_data);
   }
@@ -135,7 +135,7 @@ class RaySyncer {
   /// This will call the sub-components add function.
   ///
   /// \param node The specified node to add.
-  void AddNode(const rpc::GcsNodeInfo &node_info) {
+  virtual void AddNode(const rpc::GcsNodeInfo &node_info) {
     broadcaster_->HandleNodeAdded(node_info);
     poller_->HandleNodeAdded(node_info);
   }
@@ -144,7 +144,7 @@ class RaySyncer {
   /// This will call the sub-components removal function
   ///
   /// \param node The specified node to remove.
-  void RemoveNode(const rpc::GcsNodeInfo &node_info) {
+  virtual void RemoveNode(const rpc::GcsNodeInfo &node_info) {
     broadcaster_->HandleNodeRemoved(node_info);
     poller_->HandleNodeRemoved(node_info);
     resources_buffer_.erase(node_info.node_id());
@@ -164,10 +164,13 @@ class RaySyncer {
   // All operations in broadcaster is supposed to be put in broadcast thread
   std::unique_ptr<std::thread> broadcast_thread_;
   instrumented_io_context broadcast_service_;
+
+ protected:
   std::unique_ptr<::ray::gcs::GrpcBasedResourceBroadcaster> broadcaster_;
   // Poller is running in its own thread.
   std::unique_ptr<::ray::gcs::GcsResourceReportPoller> poller_;
 
+ private:
   // Accessing data related fields should be from main thread.
   // These fields originally were put in GcsResourceManager.
   // resources_buffer_ is the place where global view is stored.
